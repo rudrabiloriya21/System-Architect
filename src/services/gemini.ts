@@ -1,9 +1,10 @@
 import { GoogleGenAI, ThinkingLevel } from "@google/genai";
 import { Task } from "../types";
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
-
 export async function getChatResponse(prompt: string, modelName: string = "System Architect v1.0") {
+  const apiKey = import.meta.env.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY || "";
+  const ai = new GoogleGenAI({ apiKey });
+
   let modelInstruction = "";
   let thinkingLevel = ThinkingLevel.LOW;
 

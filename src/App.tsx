@@ -113,6 +113,30 @@ export default function App() {
   }, [user]);
 
   useEffect(() => {
+    if (!user || !selectedSessionId) {
+      setMessages([]);
+      return;
+    }
+
+    const messagesQuery = query(
+      collection(db, 'messages'),
+      where('sessionId', '==', selectedSessionId),
+      orderBy('timestamp', 'asc')
+    );
+
+    const unsubscribeMessages = onSnapshot(messagesQuery, (snapshot) => {
+      const msgsData = snapshot.docs.map(doc => doc.data() as Message);
+      setMessages(msgsData);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, 'messages');
+    });
+
+    return () => {
+      unsubscribeMessages();
+    };
+  }, [user, selectedSessionId]);
+
+  useEffect(() => {
     scrollToBottom();
   }, [messages]);
 
