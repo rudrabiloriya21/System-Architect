@@ -121,7 +121,8 @@ export default function App() {
 
     const messagesQuery = query(
       collection(db, 'messages'),
-      where('sessionId', '==', selectedSessionId)
+      where('sessionId', '==', selectedSessionId),
+      where('userId', '==', user.uid)
     );
 
     const unsubscribeMessages = onSnapshot(messagesQuery, (snapshot) => {
