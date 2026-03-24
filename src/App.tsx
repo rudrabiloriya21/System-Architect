@@ -240,12 +240,12 @@ export default function App() {
       const errorMsg: Message = {
         id: errorMsgId,
         role: 'model',
-        content: "Error: Failed to connect to the System Architect core. Please check your connection.",
+        content: "Error: Failed to connect to the System Architect core. Please check your connection or API key.",
         timestamp: Date.now(),
         userId: user.uid,
         sessionId: currentSessionId
       };
-      await setDoc(doc(db, 'messages', errorMsgId), errorMsg);
+      await setDoc(doc(db, 'messages', errorMsgId), errorMsg).catch(console.error);
     } finally {
       setIsLoading(false);
     }
@@ -573,6 +573,16 @@ export default function App() {
                           await setDoc(doc(db, 'messages', aiMsgId), aiMsg);
                         } catch (error) {
                           console.error("Failed to process suggestion:", error);
+                          const errorMsgId = crypto.randomUUID();
+                          const errorMsg: Message = {
+                            id: errorMsgId,
+                            role: 'model',
+                            content: "Error: Failed to connect to the System Architect core. Please check your connection or API key.",
+                            timestamp: Date.now(),
+                            userId: user.uid,
+                            sessionId: newSessionId
+                          };
+                          await setDoc(doc(db, 'messages', errorMsgId), errorMsg).catch(console.error);
                         } finally {
                           setIsLoading(false);
                         }
