@@ -93,12 +93,13 @@ export default function App() {
     // Subscribe to chat sessions
     const sessionsQuery = query(
       collection(db, 'chatSessions'),
-      where('userId', '==', user.uid),
-      orderBy('createdAt', 'desc')
+      where('userId', '==', user.uid)
     );
 
     const unsubscribeSessions = onSnapshot(sessionsQuery, (snapshot) => {
-      const sessionsData = snapshot.docs.map(doc => doc.data() as ChatSession);
+      const sessionsData = snapshot.docs
+        .map(doc => doc.data() as ChatSession)
+        .sort((a, b) => b.createdAt - a.createdAt);
       setChatSessions(sessionsData);
       if (sessionsData.length > 0 && !selectedSessionId) {
         setSelectedSessionId(sessionsData[0].id);
@@ -120,12 +121,13 @@ export default function App() {
 
     const messagesQuery = query(
       collection(db, 'messages'),
-      where('sessionId', '==', selectedSessionId),
-      orderBy('timestamp', 'asc')
+      where('sessionId', '==', selectedSessionId)
     );
 
     const unsubscribeMessages = onSnapshot(messagesQuery, (snapshot) => {
-      const msgsData = snapshot.docs.map(doc => doc.data() as Message);
+      const msgsData = snapshot.docs
+        .map(doc => doc.data() as Message)
+        .sort((a, b) => a.timestamp - b.timestamp);
       setMessages(msgsData);
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, 'messages');
