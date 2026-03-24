@@ -1,0 +1,198 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: userId
+    // Fields:
+    //   - uid: string (required) - The unique identifier for the user.
+    //   - displayName: string (optional) - The user's display name.
+    //   - email: string (required, email format) - The user's email address.
+    //   - photoURL: string (optional, uri format) - The URL to the user's profile photo.
+    //   - createdAt: number (required) - The timestamp when the user profile was created.
+    //
+    // Collection: tasks
+    // Document ID: taskId
+    // Fields:
+    //   - id: string (required) - The unique identifier for the task.
+    //   - title: string (required, size < 500) - The title of the task.
+    //   - completed: bool (required) - Whether the task is completed.
+    //   - createdAt: number (required) - The timestamp when the task was created.
+    //   - priority: string (required, enum: ['low', 'medium', 'high']) - The priority of the task.
+    //   - userId: string (required) - The ID of the user who owns this task.
+    //   - projectId: string (optional) - The ID of the project this task belongs to.
+    //
+    // Collection: projects
+    // Document ID: projectId
+    // Fields:
+    //   - id: string (required) - The unique identifier for the project.
+    //   - name: string (required, size < 100) - The name of the project.
+    //   - createdAt: number (required) - The timestamp when the project was created.
+    //   - userId: string (required) - The ID of the user who owns this project.
+    //
+    // Collection: chatSessions
+    // Document ID: sessionId
+    // Fields:
+    //   - id: string (required) - The unique identifier for the session.
+    //   - title: string (required, size < 200) - The title of the session.
+    //   - createdAt: number (required) - The timestamp when the session was created.
+    //   - userId: string (required) - The ID of the user who owns this session.
+    //
+    // Collection: messages
+    // Document ID: messageId
+    // Fields:
+    //   - id: string (required) - The unique identifier for the message.
+    //   - role: string (required, enum: ['user', 'model']) - The role of the sender.
+    //   - content: string (required, size < 5000) - The text content of the message.
+    //   - timestamp: number (required) - The timestamp when the message was sent.
+    //   - userId: string (required) - The ID of the user who owns this message.
+    //   - sessionId: string (required) - The ID of the session this message belongs to.
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isDocOwner() {
+      return isAuthenticated() && request.auth.uid == resource.data.userId;
+    }
+
+    function uidUnchanged() {
+      return !('userId' in request.resource.data) ||
+        request.resource.data.userId == request.auth.uid;
+    }
+
+    function uidNotModified() {
+      return !('userId' in request.resource.data) ||
+        request.resource.data.userId == resource.data.userId;
+    }
+
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    function isValidEmail(email) {
+      return email is string &&
+        email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+          (request.auth.token.email == "rudrabiloriya2@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+
+    function isValidUser(data) {
+      return hasRequiredFields(['uid', 'email', 'createdAt']) &&
+        hasOnlyAllowedFields(['uid', 'displayName', 'email', 'photoURL', 'createdAt', 'role']) &&
+        data.uid is string && data.uid.size() > 0 && data.uid.size() < 128 &&
+        isValidEmail(data.email) &&
+        data.createdAt is number;
+    }
+
+    function isValidTask(data) {
+      return hasRequiredFields(['id', 'title', 'completed', 'createdAt', 'priority', 'userId']) &&
+        hasOnlyAllowedFields(['id', 'title', 'completed', 'createdAt', 'priority', 'userId', 'projectId']) &&
+        data.id is string && data.id.size() > 0 && data.id.size() < 128 &&
+        data.title is string && data.title.size() > 0 && data.title.size() < 500 &&
+        data.completed is bool &&
+        data.createdAt is number &&
+        data.priority in ['low', 'medium', 'high'] &&
+        data.userId is string && data.userId.size() > 0 && data.userId.size() < 128 &&
+        (!('projectId' in data) || (data.projectId is string && data.projectId.size() > 0 && data.projectId.size() < 128));
+    }
+
+    function isValidProject(data) {
+      return hasRequiredFields(['id', 'name', 'createdAt', 'userId']) &&
+        hasOnlyAllowedFields(['id', 'name', 'createdAt', 'userId']) &&
+        data.id is string && data.id.size() > 0 && data.id.size() < 128 &&
+        data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+        data.createdAt is number &&
+        data.userId is string && data.userId.size() > 0 && data.userId.size() < 128;
+    }
+
+    function isValidChatSession(data) {
+      return hasRequiredFields(['id', 'title', 'createdAt', 'userId']) &&
+        hasOnlyAllowedFields(['id', 'title', 'createdAt', 'userId']) &&
+        data.id is string && data.id.size() > 0 && data.id.size() < 128 &&
+        data.title is string && data.title.size() > 0 && data.title.size() < 200 &&
+        data.createdAt is number &&
+        data.userId is string && data.userId.size() > 0 && data.userId.size() < 128;
+    }
+
+    function isValidMessage(data) {
+      return hasRequiredFields(['id', 'role', 'content', 'timestamp', 'userId', 'sessionId']) &&
+        hasOnlyAllowedFields(['id', 'role', 'content', 'timestamp', 'userId', 'sessionId']) &&
+        data.id is string && data.id.size() > 0 && data.id.size() < 128 &&
+        data.role in ['user', 'model'] &&
+        data.content is string && data.content.size() > 0 && data.content.size() < 5000 &&
+        data.timestamp is number &&
+        data.userId is string && data.userId.size() > 0 && data.userId.size() < 128 &&
+        data.sessionId is string && data.sessionId.size() > 0 && data.sessionId.size() < 128;
+    }
+
+    // ===============================================================
+    // Collection Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isOwner(userId) && isValidUser(request.resource.data) && (!('role' in request.resource.data) || request.resource.data.role == 'user');
+      allow update: if (isOwner(userId) && isValidUser(request.resource.data) && request.resource.data.role == resource.data.role) || isAdmin();
+    }
+
+    match /projects/{projectId} {
+      allow read: if isDocOwner() || isAdmin();
+      allow create: if isAuthenticated() && isValidProject(request.resource.data) && request.resource.data.userId == request.auth.uid;
+      allow update: if (isDocOwner() && isValidProject(request.resource.data) && uidNotModified()) || isAdmin();
+      allow delete: if isDocOwner() || isAdmin();
+    }
+
+    match /tasks/{taskId} {
+      allow read: if isDocOwner() || isAdmin();
+      allow create: if isAuthenticated() && isValidTask(request.resource.data) && request.resource.data.userId == request.auth.uid;
+      allow update: if (isDocOwner() && isValidTask(request.resource.data) && uidNotModified()) || isAdmin();
+      allow delete: if isDocOwner() || isAdmin();
+    }
+
+    match /chatSessions/{sessionId} {
+      allow read: if isDocOwner() || isAdmin();
+      allow create: if isAuthenticated() && isValidChatSession(request.resource.data) && request.resource.data.userId == request.auth.uid;
+      allow update: if (isDocOwner() && isValidChatSession(request.resource.data) && uidNotModified()) || isAdmin();
+      allow delete: if isDocOwner() || isAdmin();
+    }
+
+    match /messages/{messageId} {
+      allow read: if isDocOwner() || isAdmin();
+      allow create: if isAuthenticated() && isValidMessage(request.resource.data) && request.resource.data.userId == request.auth.uid;
+      allow update: if (isDocOwner() && isValidMessage(request.resource.data) && uidNotModified()) || isAdmin();
+      allow delete: if isDocOwner() || isAdmin();
+    }
+
+    // Default deny
+    match /{path=**} {
+      allow read, write: if false;
+    }
+  }
+}
