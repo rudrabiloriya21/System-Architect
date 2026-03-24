@@ -182,7 +182,29 @@ export default function App() {
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim() || isLoading || !user || !selectedSessionId) return;
+    if (!input.trim() || isLoading || !user) return;
+
+    let currentSessionId = selectedSessionId;
+
+    // If no session exists, create one automatically
+    if (!currentSessionId) {
+      const newSessionId = crypto.randomUUID();
+      const newSession: ChatSession = {
+        id: newSessionId,
+        title: input.slice(0, 30) + (input.length > 30 ? '...' : ''),
+        createdAt: Date.now(),
+        userId: user.uid
+      };
+      
+      try {
+        await setDoc(doc(db, 'chatSessions', newSessionId), newSession);
+        setSelectedSessionId(newSessionId);
+        currentSessionId = newSessionId;
+      } catch (error) {
+        console.error("Failed to create session:", error);
+        return;
+      }
+    }
 
     const userMsgId = crypto.randomUUID();
     const userMsg: Message = {
@@ -191,7 +213,7 @@ export default function App() {
       content: input,
       timestamp: Date.now(),
       userId: user.uid,
-      sessionId: selectedSessionId
+      sessionId: currentSessionId
     };
 
     setInput('');
@@ -209,7 +231,7 @@ export default function App() {
         content: response || "I'm sorry, I couldn't process that request.",
         timestamp: Date.now(),
         userId: user.uid,
-        sessionId: selectedSessionId
+        sessionId: currentSessionId
       };
       await setDoc(doc(db, 'messages', aiMsgId), aiMsg);
     } catch (error) {
@@ -221,7 +243,7 @@ export default function App() {
         content: "Error: Failed to connect to the System Architect core. Please check your connection.",
         timestamp: Date.now(),
         userId: user.uid,
-        sessionId: selectedSessionId
+        sessionId: currentSessionId
       };
       await setDoc(doc(db, 'messages', errorMsgId), errorMsg);
     } finally {
@@ -510,8 +532,50 @@ export default function App() {
                   ].map((suggestion, idx) => (
                     <button 
                       key={idx}
-                      onClick={() => {
-                        setIsSessionModalOpen(true);
+                      onClick={async () => {
+                        const newSessionId = crypto.randomUUID();
+                        const newSession: ChatSession = {
+                          id: newSessionId,
+                          title: suggestion.text.slice(0, 30) + (suggestion.text.length > 30 ? '...' : ''),
+                          createdAt: Date.now(),
+                          userId: user.uid
+                        };
+                        
+                        try {
+                          await setDoc(doc(db, 'chatSessions', newSessionId), newSession);
+                          setSelectedSessionId(newSessionId);
+                          
+                          // Send the message
+                          const userMsgId = crypto.randomUUID();
+                          const userMsg: Message = {
+                            id: userMsgId,
+                            role: 'user',
+                            content: suggestion.text,
+                            timestamp: Date.now(),
+                            userId: user.uid,
+                            sessionId: newSessionId
+                          };
+                          
+                          setIsLoading(true);
+                          await setDoc(doc(db, 'messages', userMsgId), userMsg);
+                          
+                          const response = await getChatResponse(suggestion.text, selectedModel);
+                          
+                          const aiMsgId = crypto.randomUUID();
+                          const aiMsg: Message = {
+                            id: aiMsgId,
+                            role: 'model',
+                            content: response || "I'm sorry, I couldn't process that request.",
+                            timestamp: Date.now(),
+                            userId: user.uid,
+                            sessionId: newSessionId
+                          };
+                          await setDoc(doc(db, 'messages', aiMsgId), aiMsg);
+                        } catch (error) {
+                          console.error("Failed to process suggestion:", error);
+                        } finally {
+                          setIsLoading(false);
+                        }
                       }}
                       className="flex items-center gap-4 p-5 bg-gemini-surface border border-white/5 rounded-3xl hover:bg-white/10 transition-all text-left group shadow-sm"
                     >
