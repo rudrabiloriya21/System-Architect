@@ -69,7 +69,7 @@ const MODELS = [
 ];
 
 export default function App() {
-  const { user, loading: authLoading, isLoggingIn, login, logout } = useFirebase();
+  const { user, loading: authLoading, isLoggingIn, authError, login, logout } = useFirebase();
   const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -289,6 +289,12 @@ export default function App() {
             )}
             <span>{isLoggingIn ? 'Authenticating...' : 'Access System Core'}</span>
           </button>
+
+          {authError && (
+            <div className="mt-6 p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-sm text-center">
+              {authError}
+            </div>
+          )}
           
           <p className="text-[10px] text-center mt-12 text-white/20 uppercase tracking-widest">
             v1.0 // Secure Authentication Required

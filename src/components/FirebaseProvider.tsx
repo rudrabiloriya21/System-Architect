@@ -16,6 +16,7 @@ interface FirebaseContextType {
   user: User | null;
   loading: boolean;
   isLoggingIn: boolean;
+  authError: string | null;
   login: () => Promise<void>;
   logout: () => Promise<void>;
 }
@@ -26,6 +27,7 @@ export function FirebaseProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
@@ -38,9 +40,9 @@ export function FirebaseProvider({ children }: { children: React.ReactNode }) {
           if (!userDoc.exists()) {
             await setDoc(userRef, {
               uid: currentUser.uid,
-              displayName: currentUser.displayName,
-              email: currentUser.email,
-              photoURL: currentUser.photoURL,
+              displayName: currentUser.displayName || null,
+              email: currentUser.email || null,
+              photoURL: currentUser.photoURL || null,
               createdAt: Date.now(),
               role: 'user'
             });
@@ -59,18 +61,20 @@ export function FirebaseProvider({ children }: { children: React.ReactNode }) {
   const login = async () => {
     if (isLoggingIn) return;
     setIsLoggingIn(true);
+    setAuthError(null);
     
     try {
       await signInWithPopup(auth, googleProvider);
     } catch (error: any) {
+      console.error('Login error:', error);
       if (error.code === 'auth/popup-blocked') {
-        alert('The login popup was blocked by your browser. Please allow popups for this site and try again.');
-      } else if (error.code === 'auth/cancelled-popup-request') {
-        console.log('Login popup was closed before completion.');
-      } else if (error.code === 'auth/popup-closed-by-user') {
-        console.log('User closed the login popup.');
+        setAuthError('The login popup was blocked by your browser. Please allow popups for this site and try again.');
+      } else if (error.code === 'auth/unauthorized-domain') {
+        setAuthError('This domain is not authorized for Firebase Auth. Please add it in the Firebase Console.');
+      } else if (error.code === 'auth/cancelled-popup-request' || error.code === 'auth/popup-closed-by-user') {
+        // User cancelled, no need to show error
       } else {
-        console.error('Login error:', error);
+        setAuthError(error.message || 'An error occurred during login.');
       }
     } finally {
       setIsLoggingIn(false);
@@ -86,7 +90,7 @@ export function FirebaseProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <FirebaseContext.Provider value={{ user, loading, isLoggingIn, login, logout }}>
+    <FirebaseContext.Provider value={{ user, loading, isLoggingIn, authError, login, logout }}>
       {children}
     </FirebaseContext.Provider>
   );

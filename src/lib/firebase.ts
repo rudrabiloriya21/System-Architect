@@ -18,11 +18,19 @@ import {
 } from 'firebase/firestore';
 
 // Import the Firebase configuration
-import firebaseConfig from '../../firebase-applet-config.json';
+const firebaseConfig = {
+  apiKey: "AIzaSyA5LBPQi7MYXVwmJ5NNFGObXhPPSXmLIko",
+  authDomain: "system-architect-86539.firebaseapp.com",
+  projectId: "system-architect-86539",
+  storageBucket: "system-architect-86539.firebasestorage.app",
+  messagingSenderId: "914184627752",
+  appId: "1:914184627752:web:64b0191c09d9b09db4371d",
+  measurementId: "G-PHGNJD61PX"
+};
 
 // Initialize Firebase SDK
 const app = initializeApp(firebaseConfig);
-export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
+export const db = getFirestore(app);
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
 
@@ -84,7 +92,9 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
 async function testConnection() {
   try {
     await getDocFromServer(doc(db, 'test', 'connection'));
+    console.log("Firestore connection successful.");
   } catch (error) {
+    console.error("Firestore connection test failed:", error);
     if(error instanceof Error && error.message.includes('the client is offline')) {
       console.error("Please check your Firebase configuration. ");
     }
