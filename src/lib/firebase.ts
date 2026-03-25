@@ -19,13 +19,13 @@ import {
 
 // Import the Firebase configuration
 const firebaseConfig = {
-  apiKey: "AIzaSyA5LBPQi7MYXVwmJ5NNFGObXhPPSXmLIko",
+  apiKey: "AIzaSyA5LBPQi7MYXVwmJ5NNFGObXhPPSXmlIko",
   authDomain: "system-architect-86539.firebaseapp.com",
   projectId: "system-architect-86539",
   storageBucket: "system-architect-86539.firebasestorage.app",
   messagingSenderId: "914184627752",
-  appId: "1:914184627752:web:64b0191c09d9b09db4371d",
-  measurementId: "G-PHGNJD61PX"
+  appId: "1:914184627752:web:777514a600d09c41b4371d",
+  measurementId: "G-Y7DN459VBQ"
 };
 
 // Initialize Firebase SDK
