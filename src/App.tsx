@@ -223,7 +223,8 @@ export default function App() {
     try {
       await setDoc(doc(db, 'messages', userMsgId), userMsg);
       
-      const response = await getChatResponse(input, selectedModel);
+      const history = messages.map(m => ({ role: m.role, content: m.content }));
+      const response = await getChatResponse(input, selectedModel, history);
       
       const aiMsgId = crypto.randomUUID();
       const aiMsg: Message = {
@@ -566,7 +567,8 @@ export default function App() {
                           setIsLoading(true);
                           await setDoc(doc(db, 'messages', userMsgId), userMsg);
                           
-                          const response = await getChatResponse(suggestion.text, selectedModel);
+                          const history = messages.map(m => ({ role: m.role, content: m.content }));
+                          const response = await getChatResponse(suggestion.text, selectedModel, history);
                           
                           const aiMsgId = crypto.randomUUID();
                           const aiMsg: Message = {
