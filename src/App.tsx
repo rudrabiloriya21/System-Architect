@@ -235,13 +235,13 @@ export default function App() {
         sessionId: currentSessionId
       };
       await setDoc(doc(db, 'messages', aiMsgId), aiMsg);
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
       const errorMsgId = crypto.randomUUID();
       const errorMsg: Message = {
         id: errorMsgId,
         role: 'model',
-        content: "Error: Failed to connect to the System Architect core. Please check your connection or API key.",
+        content: `Error: Failed to connect to the System Architect core. Please check your connection or API key.\n\nDetails: ${error.message || String(error)}`,
         timestamp: Date.now(),
         userId: user.uid,
         sessionId: currentSessionId
